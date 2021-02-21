@@ -260,3 +260,6 @@ def test():
 import os
 if os.environ.get('test_case','false') == 'true':
     test()
+
+
+import torchvision
