@@ -258,5 +258,5 @@ def test():
     out_decode = box_coder.decode_single(out_encode, box_proposal)
     print(out_decode)
 import os
-if os.environ.get('test_case','true') == 'true':
+if os.environ.get('test_case','false') == 'true':
     test()

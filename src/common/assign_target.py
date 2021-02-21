@@ -7,8 +7,6 @@ from src.common.matcher import Matcher, MatcherNumpy
 from src.common.box_utils import iou
 
 
-import os
-os.environ["CUDA_VISIBLE_DEVICES"]="-1"
 class AssignTarget(object):
     def __init__(self , box_coder = BoxCoderNumpy(weights=[10.,10.,5.,5.]),matcher =None, **kwargs):
         self.box_coder = box_coder
