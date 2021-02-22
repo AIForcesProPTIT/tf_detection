@@ -52,9 +52,9 @@ head_config = {
 }
 # just provide typical retina_head:
 # todos add rpn_head ( faster-rcnn )
-
-model = build_model(
-    backbone_config,
-    neck_config,
-    head_config
-)
+def get_default_retina():
+    return build_model(
+        backbone_config,
+        neck_config,
+        head_config
+    )
