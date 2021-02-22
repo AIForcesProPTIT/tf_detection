@@ -44,7 +44,7 @@ neck_config = {
 }
 
 head_config = {
-    'head_name':'retina',
+    'head_name':'anchor_based_head',
     "num_classes":14,
     "num_anchors":9,
     "feat_channels":256,

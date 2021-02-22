@@ -4,7 +4,9 @@ from tensorflow import keras
 from src.head.common import share_conv_module, reshape_to_valid_classifier, reshape_to_valid_reg
 import logging
 logger = logging.getLogger(__name__)
-def build_retina_head(  features,
+
+# todos : add example rpn_head : num_classes = 1,num_anchors = 0, feat_chanels = 0, stacked_convs = 0
+def build_anchor_based_head(  features,
                         num_classes=1,
                         num_anchors = 9,
                         feat_channels=256,

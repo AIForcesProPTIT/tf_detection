@@ -3,7 +3,7 @@ from tensorflow import keras
 
 from src.backbone.resnet_features import get_resnet
 from src.neck.build_neck import build_from_config
-from src.head.retina_head import build_retina_head
+from src.head.anchor_based_head import build_anchor_based_head
 def build_backbone( backbone_name = 'resnet_v1_50',
                     image_inputs = (512, 512, 3),
                     **kwargs):
@@ -29,8 +29,8 @@ def build_head(necks, name_head = 'retina', config  = {}):
         stacked_convs=4,
         **kwargs
     """
-    if name_head == 'retina':
-        return build_retina_head(necks, **config)
+    if name_head == 'anchor_based_head':
+        return build_anchor_based_head(necks, **config)
 
 def build_model(
     backbone_config:dict,
@@ -53,7 +53,7 @@ def build_model(
 
     
 
-
+tf.image.generate_bounding_box_proposals
     
 
 

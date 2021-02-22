@@ -5,6 +5,7 @@
 3. head : anchor_base retina_head typical (shoulde change name).
 
 ## Todos : 
+
 0. add two stage detector : faster-rcnn
 1. add more backbone : some backbone already in keras, and some not : CSP-backbone(Yolo), efficientNet,..
 2. Create ConvsModule stable for config neck.
