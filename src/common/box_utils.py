@@ -2,23 +2,26 @@ import tensorflow as tf
 
 from tensorflow import keras
 
-def center_to_coordinates(box):
+def center_to_coordinates(boxes):
     '''convert box format [x,y,w,h] -> [x1,y1,x2,y2]
         box: tensor with shape [N,4]
     '''
-    x,y,w,h = tf.unstack(box,axis=1)
+    return tf.concat(
+        [boxes[..., :2] - boxes[..., 2:] / 2.0, boxes[..., :2] + boxes[..., 2:] / 2.0],
+        axis=-1,
+    )
 
-    return tf.stack([x-w/2, y-h/2, x+w/2, y+h/2],axis=1)
 
-
-def coordinates_to_center(box):
+def coordinates_to_center(boxes):
     '''convert box format [x1,y1,x2,y2] -> [x,y,w,h]
         box: tensor with shape [N,4]
     '''
-    x1,y1,x2,y2 = tf.unstack(box, axis=1)
-    w,h = x2-x1, y2-y1
-    x_center,y_center = x1 + w/2, y1 + h/2
-    return tf.stack([x_center, y_center, w, h],axis=1)
+    boxes =  tf.concat(
+        [(boxes[..., :2] + boxes[..., 2:]) / 2.0, boxes[..., 2:] - boxes[..., :2]],
+        axis=-1,
+    )
+    boxes = tf.maximum(boxes, 0.0001)
+    return boxes
 
 
 

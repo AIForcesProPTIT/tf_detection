@@ -1,26 +1,19 @@
-from src.head.roi_align import RoiAlign,log2_graph
-from src.common.assign_target import AssignTargetTF
+# roi_head : get boxes from anchor_base_head (rpn layers) -> crop_boxes -> cls_pred,box_pred
 
 from tensorflow import keras
-
 import tensorflow as tf
+import numpy as np
 
 
-# rpn -> roihead -> compute loss 
-# trong roihead
+def log2_graph(x):return tf.math.log(x) / tf.math.log(2.)
 
-class MultiScaleRoIAlign(keras.layers.Layer):
+class RoiAlign(keras.layers.Layer):
     """Roifeatures to roi
         inputs : features_map : [List(Batch_size, H',W', C)] features_maps[i] = level[i]
                  bboxes : (batch_size, num_boxes,(x1, y1, x2, y2)) in normailized
         outputs : Tensor (batch_size,num_boxes,*crop_size,,depth]
     """
-    def __init__(self,crop_size=(7, 7), canonical_size = 56.,
-                    min_level=0, max_level=4,
-                    method ='bilinear',
-                    assign_target =None,
-                    image_shape=(1024,1024,3),
-                    **kwargs): # 0->4 :C2, C3.C4.C5,max_poll
+    def __init__(self,crop_size=(7, 7), canonical_size = 56., min_level=0, max_level=4, method ='bilinear',**kwargs): # 0->4 :C2, C3.C4.C5,max_poll
         """canonical_size = 56: size <=56 : map to c2 (usually c2 map to size_anchor 32 so canonical_size = 56)
         """
         super().__init__(**kwargs)
@@ -31,11 +24,6 @@ class MultiScaleRoIAlign(keras.layers.Layer):
         self.method = method
         assert min_level < max_level
         assert all(map(lambda x:x>0, crop_size))
-        if assign_target is None:
-            assign_target = AssignTargetTF()
-        self.assign_target = assign_target
-        self.image_shape = image_shape
-
 
     def get_config(self):
         config = super().get_config()
@@ -45,14 +33,13 @@ class MultiScaleRoIAlign(keras.layers.Layer):
             'max_level':self.max_level,
             'canonical_size':self.canonical_size
         })
-
-    def call(self, inputs):
-        boxes, feature_maps=inputs
+    
+    def call(self, boxes, feature_maps, image_shape):
+        
         x1, y1, x2, y2 = tf.split(boxes, 4, axis=2) # batch,num_boxes
         bboxes = tf.concat([y1, x1, y2, x2], axis = -1) # for tf format :v
         h = y2 - y1 
         w = x2 - x1
-        image_shape = self.image_shape
         image_area = tf.cast(image_shape[0] * image_shape[1], tf.float32) # scalaer 
 
 
@@ -119,3 +106,23 @@ class MultiScaleRoIAlign(keras.layers.Layer):
     def compute_output_shape(self, input_shape):
         return input_shape[0][:2] + self.crop_size + (input_shape[1][-1], ) # batch, num_boxes + (crop_size) + depth
 
+
+
+def test_roi_align():
+    
+    xy = np.random.uniform(size=(2, 15, 2)) * 256. # batch_size ,num_bboxes, 4
+    x2y2 = np.random.uniform(size=(2, 15, 2)) * 256 + xy
+    bboxes = np.concatenate((xy,x2y2), axis=-1) /512.
+    bboxes[0,0,:] = np.array([0.,0.,1.,1.])
+    feature_maps = [tf.random.normal(shape=(2, 512 // 2**i, 512 // 2**i , 3)) for i in range(2,7)]
+
+    bboxes = tf.convert_to_tensor(bboxes, tf.float32)
+    image_shape = [512., 512.]
+    roi_align = RoiAlign(crop_size=(8,8))
+    out = roi_align(bboxes, feature_maps, image_shape)
+    assert all( map(lambda x:x[0] ==x[1], list(zip(out.shape.as_list() , [2, 15 , 8, 8, 3]) ) ))
+    return out,bboxes
+
+
+
+# Roi_aligin -> []
