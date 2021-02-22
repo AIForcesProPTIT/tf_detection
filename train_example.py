@@ -85,35 +85,7 @@ def loss_fn(y_true, y_pred):
 
 
 # model train wrapper
-class ModelTrainWraper(keras.Model):
-    
-    def __init__(self, *args, anchor_generator = None,**kwargs):
-        super().__init__(*args,**kwargs)
-        self.anchors = anchors
-    def train_step(self, data):
-        images, matched_gt_boxes, matched_gt_labels,\
-        mask_bboxes,mask_labels= data
-        y_true = (matched_gt_boxes, matched_gt_labels,\
-                    mask_bboxes,mask_labels)
-        with tf.GradientTape() as tape:
-            
-            convs, regs = self(images, training=True)
-            image_shape = images.shape.as_list()
-            loss = self.loss(
-                  y_true, (convs, regs))
-#             print(loss)
-            total_loss = loss[0] * 50. + loss[1] 
-            trainable_vars = self.trainable_variables
-            
-            scaled_loss = total_loss
-            optimizer = self.optimizer
-            
-#         learning_rate = float(tf.keras.backend.get_value(self.optimizer.lr))
-        scaled_gradients = tape.gradient(scaled_loss, trainable_vars)
-        gradients = scaled_gradients
-        self.optimizer.apply_gradients(zip(gradients, trainable_vars))
-#         self.compiled_metrics.update_state(y_true, (convs,regs))
-        return {'loss_cls':loss[0], 'loss_reg':loss[1], 'total_loss':total_loss}
+
 
 
 
@@ -169,15 +141,16 @@ head_config = {
     "stacked_convs":4
 }
 
-inputs,outputs = build_model(
+model = build_model(
     backbone_config,
     neck_config,
-    head_config
+    head_config,
+    anchors
 )
 
 
 optimizer = tf.keras.optimizers.SGD(learning_rate=0.01)
-model = ModelTrainWraper(anchor_generator = anchors, inputs=inputs,outputs=outputs)
+
 model.compile(
     optimizer=optimizer,loss=loss_fn
 )

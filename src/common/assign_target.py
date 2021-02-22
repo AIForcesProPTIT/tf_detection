@@ -64,10 +64,14 @@ class AssignTargetTF(object):
 
         for bboxes_un, labels_un,proposal_un in zip(list_bboxes, list_labels, list_proposal):
             # shape (M,4) , (N,4)
+            # first gather 
+            valid_idx = tf.where(labels_un >=0, 1, -2)
+            
+            
             matrix_iou = iou(bboxes_un, proposal_un)
             # map idx prosal to bboxes_un
             matched_idx = self.matcher(matrix_iou)  # idx shape = (N,)
-            
+            matched_idx = tf.where(valid_idx == 1, matched_idx, valid_idx )
 
 
             fake_bboxes = tf.concat([

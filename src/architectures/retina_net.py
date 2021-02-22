@@ -10,7 +10,9 @@ backbone_config = {
     'name':'resnet_v1_50',
     'inputs_shape':(1024, 1024, 3)
 }
-
+# batch, 1000, 7,7,256
+# 
+import torchvision
 neck_config = {
     'name':'fpn_network',
     'build_node': 
@@ -25,7 +27,7 @@ neck_config = {
         ]
     # Node will build likes : 
     #"""
-        #c6  9  ->  c7   10
+        #c6  9  
         # |
         #c5  4   -> c5'   5
         #            |
@@ -50,11 +52,24 @@ head_config = {
     "feat_channels":256,
     "stacked_convs":4
 }
+anchor_sizes = tuple( (x, int(x * 2 ** (1.0 / 3)), int(x * 2 ** (2.0 / 3)) ) for x in [32, 64, 128, 256, 512])
+aspect_ratios = ((0.5, 1.0, 2.0),) * len(anchor_sizes)
+
+anchor_generator = AnchorGenerator(anchor_sizes, aspect_ratios)
+images = tf.zeros(shape=(1,1024,1024,3), dtype=tf.float32)
+image_shape = images.shape.as_list()
+feature_map_shapes = [
+    (image_shape[1] // 2**i, image_shape[2] // 2**i,3) for i in range(3,8)
+]
+
+anchors = anchor_generator(images, feature_map_shapes)
 # just provide typical retina_head:
 # todos add rpn_head ( faster-rcnn )
-def get_default_retina():
+def get_default_retina(anchors):
     return build_model(
+        
         backbone_config,
         neck_config,
-        head_config
+        head_config,
+        anchors
     )

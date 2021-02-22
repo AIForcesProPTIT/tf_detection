@@ -5,7 +5,7 @@ from tensorflow import keras
 
 import tensorflow as tf
 
-
+from src.common.box_utils import coordinates_to_center, center_to_coordinates
 # rpn -> roihead -> compute loss 
 # trong roihead
 
@@ -18,7 +18,6 @@ class MultiScaleRoIAlign(keras.layers.Layer):
     def __init__(self,crop_size=(7, 7), canonical_size = 56.,
                     min_level=0, max_level=4,
                     method ='bilinear',
-                    assign_target =None,
                     image_shape=(1024,1024,3),
                     **kwargs): # 0->4 :C2, C3.C4.C5,max_poll
         """canonical_size = 56: size <=56 : map to c2 (usually c2 map to size_anchor 32 so canonical_size = 56)
@@ -31,9 +30,7 @@ class MultiScaleRoIAlign(keras.layers.Layer):
         self.method = method
         assert min_level < max_level
         assert all(map(lambda x:x>0, crop_size))
-        if assign_target is None:
-            assign_target = AssignTargetTF()
-        self.assign_target = assign_target
+        
         self.image_shape = image_shape
 
 
@@ -43,13 +40,31 @@ class MultiScaleRoIAlign(keras.layers.Layer):
             'crop_size':self.crop_size,
             'min_level':self.min_level,
             'max_level':self.max_level,
-            'canonical_size':self.canonical_size
+            'canonical_size':self.canonical_size,
+            "image_shape":self.image_shape,
+            "method":self.method
+            
         })
 
     def call(self, inputs):
-        boxes, feature_maps=inputs
-        x1, y1, x2, y2 = tf.split(boxes, 4, axis=2) # batch,num_boxes
-        bboxes = tf.concat([y1, x1, y2, x2], axis = -1) # for tf format :v
+        bboxes, feature_maps=inputs
+        x1, y1, x2, y2 = tf.split(bboxes, 4, axis=-1) # batch,num_boxes
+        
+        # clip boxes 
+
+        width = self.image_shape[1]
+        height = self.image_shape[0]
+
+        x1 = tf.clip_by_value(x1, 0, width  )
+        y1 = tf.clip_by_value(y1, 0, height )
+        x2 = tf.clip_by_value(x2, 0, width  )
+        y2 = tf.clip_by_value(y2, 0, height )
+        x1 = x1 / width
+        x2 = x2 / width
+        y1 = y1 / height
+        y2 = y2 / height
+
+        boxes = tf.concat([y1, x1, y2, x2], axis = -1) # for tf format :v
         h = y2 - y1 
         w = x2 - x1
         image_shape = self.image_shape
