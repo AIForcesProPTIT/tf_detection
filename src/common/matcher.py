@@ -128,7 +128,7 @@ class Matcher(object):
             [0, M - 1] or a negative value indicating that prediction i could not
             be matched.
         """
-        if tf.shape(match_quality_matrix)[0] == 0:
+        if match_quality_matrix.shape.as_list()[0] == 0:
             raise ValueError(
                     "No ground-truth boxes available for one of the images "
                     "during training")

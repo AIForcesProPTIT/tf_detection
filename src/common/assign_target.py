@@ -54,6 +54,7 @@ class AssignTargetTF(object):
         bboxes = tf.cast(bboxes, dtype=dtype)
 
         list_bboxes = tf.unstack(bboxes, axis=0)
+        proposal.set_shape([len(list_bboxes),] + proposal.shape.as_list()[1:])
         list_proposal = tf.unstack(proposal, axis=0)
         list_labels = tf.unstack(labels, axis=0)
 
@@ -65,13 +66,17 @@ class AssignTargetTF(object):
         for bboxes_un, labels_un,proposal_un in zip(list_bboxes, list_labels, list_proposal):
             # shape (M,4) , (N,4)
             # first gather 
-            valid_idx = tf.where(labels_un >=0, 1, -2)
-            
+            valid_idx = tf.where(labels_un >=0)
+            valid_idx = tf.reshape(valid_idx, (-1,))
+            bboxes_un = tf.gather(bboxes_un, valid_idx)
+            labels_un =  tf.gather(labels_un, valid_idx)
+            # assert 
             
             matrix_iou = iou(bboxes_un, proposal_un)
+            # print(matrix_iou,tf.shape(matrix_iou), tf.shape(matrix_iou)[0])
             # map idx prosal to bboxes_un
             matched_idx = self.matcher(matrix_iou)  # idx shape = (N,)
-            matched_idx = tf.where(valid_idx == 1, matched_idx, valid_idx )
+            # matched_idx = tf.where(valid_idx == 1, matched_idx, valid_idx )
 
 
             fake_bboxes = tf.concat([
@@ -80,7 +85,7 @@ class AssignTargetTF(object):
             ], axis=0)
 
             fake_labels = tf.concat([
-                tf.convert_to_tensor(np.array([-2,-1]).reshape(-1,1)),
+                tf.convert_to_tensor(np.array([-2,-1]).reshape(-1,1), dtype = labels_un.dtype),
                 tf.reshape(labels_un,(-1,1))
             ], axis=0)
 

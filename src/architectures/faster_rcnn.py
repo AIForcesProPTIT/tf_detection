@@ -47,11 +47,10 @@ def get_faster_rcnn_fpn_50(
 
     rpn_config = dict(
         name_head = 'anchor_based_head',
-        num_classes=14,
+        num_classes=1,
         num_anchors= anchor_generator.num_anchors_per_location()[0], # simple 
         feat_channels=0,
         stacked_convs=0,
-
         confidence_threshold=0.05,
         nms_iou_threshold=0.5,
         max_detections_per_class=200,
@@ -79,11 +78,11 @@ def get_faster_rcnn_fpn_50(
         num_classes = 14,
         stacked_fc = 2
     )
-    model_train, model_inference = build_model(backbone_config, neck_config,
+    model_train,model_rpn = build_model(backbone_config, neck_config,
                                                 rpn_config,
                                                 roi_config, head_config,anchors = anchors,
                                                 image_shapes=image_shape)
-    return model_train, model_inference
+    return model_train,model_rpn, anchors
 
 
 

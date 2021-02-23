@@ -85,7 +85,14 @@ class DecodePredictions(tf.keras.layers.Layer):
             self.confidence_threshold,
             clip_boxes=False,
         )
-        return out.nmsed_boxes,out.nmsed_scores,out.nmsed_classes,out.valid_detections
+        nmsed_boxes,nmsed_scores,nmsed_classes,valid_detections = \
+            (out.nmsed_boxes,out.nmsed_scores,out.nmsed_classes,out.valid_detections)
+        if training:
+            nmsed_boxes = tf.stop_gradient(out.nmsed_boxes)
+            nmsed_scores = tf.stop_gradient(out.nmsed_scores)
+            nmsed_classes = tf.stop_gradient(out.nmsed_classes)
+            valid_detections = tf.stop_gradient(out.valid_detections)
+        return nmsed_boxes,nmsed_scores,nmsed_classes,valid_detections
     def get_config(self):
         config = super().get_config()
         config.update({

@@ -22,7 +22,7 @@ class DataSet():
                  [210, 224, 119], [211, 176, 166], [63, 7, 197], [102, 65, 77], [194, 134, 175],
                  [209, 219, 50], [255, 44, 47], [89, 125, 149], [110, 27, 100]]
     def __init__(self, img_dir=os.getcwd(), tranforms =lambda x: x, anchor_default = np.array([]),
-                assigner = None ):
+                assigner = None,two_stage=False ):
         if assigner is None: assigner = AssignTarget()
         self.assigner = assigner
         self.img_dir = img_dir
@@ -38,11 +38,14 @@ class DataSet():
                                                                    self.img_dir,
                                                                    self.tranforms,
                                                                    self.anchor_default,
-                                                                   self.assigner),
+                                                                   self.assigner,
+                                                                   two_stage),
+                                                                   
                                                            output_shapes={
                 'img':(None,None,3),
                 'bboxes':(None,4),
                 'labels':(None,),
+                'num_boxes':(),
                 'matched_gt_boxes':(None,4),
                 'matched_gt_labels':(None,),
                 'mask_bboxes':(None,),
@@ -51,6 +54,7 @@ class DataSet():
                 'img':tf.float32,
                 'bboxes':tf.float32,
                 'labels':tf.int32,
+                'num_boxes':tf.int32,
                 'matched_gt_boxes':tf.float32,
                 'matched_gt_labels':tf.int32,
                 'mask_bboxes':tf.float32,
@@ -59,7 +63,7 @@ class DataSet():
             })
         
     @staticmethod
-    def gen_data(data, img_dir, tranforms, anchor_default,assigner):
+    def gen_data(data, img_dir, tranforms, anchor_default,assigner, two_stage):
 
         for image_info, annotation in zip(data['images'],data['annotations_group_by_image_id']):
             path = os.path.join(img_dir, image_info['file_name']) # tf.string
@@ -67,6 +71,7 @@ class DataSet():
             bboxes = []
             labels = []
             areas = []
+
             for item in annotation:
                 bboxes.append([item['x_min'],item['y_min'],item['x_max'], item['y_max']])
                 labels.append(item['category_id'])
@@ -77,11 +82,14 @@ class DataSet():
             data_yield = {
                 'img':sample['image'],
                 'bboxes':np.array(sample['bboxes'], dtype=np.float).reshape(-1,4),
-                'labels':np.array(sample['labels'], dtype=np.int32).reshape(-1,)
+                'labels':np.array(sample['labels'], dtype=np.int32).reshape(-1,),
+                'num_boxes':len(areas),
             }
-
+            
             matched_gt_boxes, matched_gt_labels,mask_bboxes, mask_labels = assigner(anchor_default,
                                                                            data_yield['bboxes'], data_yield['labels'])
+
+            if two_stage:matched_gt_labels = np.where(matched_gt_labels>=0,0,matched_gt_labels)
             data_yield['matched_gt_boxes'] = matched_gt_boxes
             data_yield['matched_gt_labels'] = matched_gt_labels
             data_yield['mask_bboxes']  = mask_bboxes

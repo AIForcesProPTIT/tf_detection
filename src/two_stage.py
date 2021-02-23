@@ -12,13 +12,13 @@ from src.head.roi_head import MultiScaleRoIAlign
 from src.head.common import FlattenFlexible
 from src.common.assign_target import AssignTargetTF
 
-class ModelTrainWraper(keras.Model):
-    def __init__(self, *args,assign_target = None, **kwargs):
+class ModelTrainWraperTwoStage(keras.Model):
+    def __init__(self, *args,assign_target = None, rpn_train_only=False, **kwargs):
         super().__init__(*args, **kwargs)
         if assign_target is None:
             assign_target = AssignTargetTF()
         self.assign_target = assign_target
-    
+        self.rpn_train_only = rpn_train_only
 
     def train_step(self, data):
         images, matched_gt_boxes, matched_gt_labels,\
@@ -26,30 +26,40 @@ class ModelTrainWraper(keras.Model):
         # first train rpn
         y_train_rpn = (matched_gt_boxes, matched_gt_labels,\
                     mask_bboxes,mask_labels)
+        
+        
         with tf.GradientTape() as tape:
-
-            convs, regs, decoder_rpn,\
-                rpn_convs, rpn_regs = self(images, training=True)
-            loss_rpn = self.loss.get("rpn_loss_func")(
-                  y_train_rpn, (rpn_convs, rpn_regs))
             
+            if self.rpn_train_only is False:
+                convs, regs, decoder_rpn,\
+                    rpn_convs, rpn_regs = self(images, training=True)
+                loss_rpn = self.loss.get("rpn_loss_func")(
+                  y_train_rpn, (rpn_convs, rpn_regs))
+                (target_regressiones,\
+                target_clasifications,\
+                mask_regressiones,\
+                mask_clasifications) = self.assign_target(bboxes, labels, decoder_rpn)
 
-            target_regressiones,\
-            target_clasifications,\
-            mask_regressiones,\
-            mask_clasifications = self.assign_target(bboxes, labels,decoder_rpn)
+                loss_stage_two = self.loss.get("head_loss_func")(
+                    (target_regressiones, target_clasifications, mask_regressiones, mask_clasifications),
+                    (convs, regs)
+                )
+                loss_stable = loss_rpn + loss_stage_two
+                loss_stable = [i * tf.cast( tf.logical_not(tf.logical_or(tf.math.is_nan(i), tf.math.is_inf(i))), tf.float32) for i in loss_stable  ]
+                total_loss = tf.math.reduce_sum(loss_stable)
+                total_loss = total_loss 
+                trainable_vars = self.trainable_variables
+            else:
+                rpn_convs, rpn_regs = self(images, training=True)
+                loss_rpn = self.loss.get("rpn_loss_func")(
+                    y_train_rpn, (rpn_convs, rpn_regs))
 
-            loss_stage_two = self.loss.get("head_loss_func")(
-                (target_regressiones, target_clasifications, mask_regressiones, mask_clasifications),
-                (convs, regs)
-            )
-
-
-
-
-            total_loss = loss_rpn[0] * 50. + loss_rpn[1] + loss_stage_two[0] * 50. +  loss_stage_two[1]
-            total_loss = total_loss + self.losses
-            trainable_vars = self.trainable_variables
+                loss_stable = loss_rpn
+                loss_stable = [i * tf.cast( tf.logical_not(tf.logical_or(tf.math.is_nan(i), tf.math.is_inf(i))), tf.float32) for i in loss_stable  ]
+                total_loss = tf.math.reduce_sum(loss_stable)
+                total_loss = total_loss 
+                trainable_vars = self.trainable_variables
+                loss_stage_two = [0.,0.]
             
             # modifier loss here : scale loss ... 
             scaled_loss = total_loss
@@ -83,6 +93,7 @@ def build_model(backbone_config:dict,
         necks,
         **rpn_config,
     )
+    # print(rpn)
     rpn_config_decoder = dict(
         anchors=anchors,
         image_shape=image_shapes,
@@ -108,13 +119,12 @@ def build_model(backbone_config:dict,
     
     convs,regs = build_flatten_crop(head_flatten, **head_config)
 
-    model_inference = keras.Model(
-        inputs = backbone.inputs, outputs = [convs, regs]
-    )
+   
 
-    model_train =ModelTrainWraper(inputs = backbone.inputs, outputs = [convs, regs, decoder_rpn[0], rpn[0],rpn[1]])
-
-    return model_train, model_inference
+    model_train = ModelTrainWraperTwoStage(inputs = backbone.inputs, outputs = [convs, regs, decoder_rpn[0], rpn[0],rpn[1]])
+    model_rpn = ModelTrainWraperTwoStage(inputs = backbone.inputs, outputs = [rpn[0],rpn[1]])
+    model_rpn.rpn_train_only = True
+    return model_train,model_rpn
     
 
 
@@ -156,6 +166,5 @@ def build_flatten_crop(head_flatten, representation_size = 1024, num_classes = 1
 
     return convs,regs
 
-
-
+import torchvision.models.detection.faster_rcnn
 

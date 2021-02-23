@@ -9,6 +9,8 @@ import numpy as np
 import math
 from src.common.box_utils import coordinates_to_center,center_to_coordinates
 from .box_utils import coordinates_to_center,center_to_coordinates
+import tensorflow as tf
+from tensorflow import keras
 def encode_boxes(reference_boxes, proposals, weights):
     # type: (torch.Tensor, torch.Tensor, torch.Tensor) -> torch.Tensor
     """
@@ -34,9 +36,12 @@ def encode_boxes(reference_boxes, proposals, weights):
     ex_heights = proposals_y2 - proposals_y1
     ex_ctr_x = proposals_x1 + 0.5 * ex_widths
     ex_ctr_y = proposals_y1 + 0.5 * ex_heights
-
-    gt_widths = reference_boxes_x2 - reference_boxes_x1
+    ex_widths = tf.maximum(ex_widths, 0.1)
+    ex_heights = tf.maximum(ex_heights, 0.1)
+    gt_widths = reference_boxes_x2 - reference_boxes_x1 
     gt_heights = reference_boxes_y2 - reference_boxes_y1
+    gt_widths = tf.maximum(gt_widths, 0.1)
+    gt_heights = tf.maximum(gt_heights, 0.1)
     gt_ctr_x = reference_boxes_x1 + 0.5 * gt_widths
     gt_ctr_y = reference_boxes_y1 + 0.5 * gt_heights
 
