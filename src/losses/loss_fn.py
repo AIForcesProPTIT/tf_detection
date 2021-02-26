@@ -11,7 +11,7 @@ def bbox_loss(y_true, y_pred, delta = 0.5):
             delta, reduction='none')(y_true, y_pred)
     return out
     
-def cls_loss(y_true, y_pred, alpha = 0.25, gamma = 1.5, label_smoothing = 0.):
+def cls_loss(y_true, y_pred, alpha = 0.25, gamma = 2., label_smoothing = 0.):
     """y_true: shape = (batch, n_anchors, 1)
        y_pred : shape = (batch, n_anchors, num_class)
     """ 
@@ -25,9 +25,11 @@ def cls_loss(y_true, y_pred, alpha = 0.25, gamma = 1.5, label_smoothing = 0.):
     
     return alpha_factor * modulating_factor * ce
 
-def loss_fn(y_true, y_pred):
+def loss_fn(y_true, y_pred, alpha = 0.25, gamma = 2., label_smoothing = 0.):
+    
     matched_gt_boxes,matched_gt_labels, mask_bboxes,mask_labels = y_true
     cls_pred, reg_pred = y_pred
+
     num_positive = tf.reduce_sum(mask_bboxes, axis=1) # batch,
     
     num_positive = tf.where(num_positive > 0, num_positive, 1.) #batch
@@ -36,11 +38,10 @@ def loss_fn(y_true, y_pred):
     
     matched_gt_labels = tf.one_hot(matched_gt_labels,  depth=cls_pred.shape.as_list()[-1])
     
-    cls_losses = tf.math.reduce_sum(cls_loss(matched_gt_labels, cls_pred),-1) * mask_labels # batch,num_anchors
+    cls_losses = tf.math.reduce_sum(cls_loss(matched_gt_labels, cls_pred,
+                                    alpha = alpha, gamma = gamma, label_smoothing = 0.),-1) * mask_labels # batch,num_anchors
     
     cls_losses = tf.math.reduce_sum(cls_losses,-1) / num_positive
-    
-    
     
     return tf.reduce_mean(tf.reduce_sum(reg_loss,axis=1) / num_positive),tf.reduce_mean(cls_losses)
 

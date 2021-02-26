@@ -104,7 +104,7 @@ def iou(boxlist1, boxlist2, scope=None):
         tf.equal(intersections, 0.0),
         tf.zeros_like(intersections), tf.truediv(intersections, unions))
 
-
+import torchvision
 
 
 

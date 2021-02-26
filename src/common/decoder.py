@@ -48,6 +48,8 @@ class DecodePredictions(tf.keras.layers.Layer):
         # anchor_boxes (None, numanchors,4)
         # box_predictions = (batchsize, numanchors,4)
         boxes = box_predictions * self._box_variance
+        anchor_boxes = coordinates_to_center(anchor_boxes)
+        # boxes = coordinates_to_center(box_predictions) * self._box_variance
         boxes = tf.concat(
             [
                 boxes[:, :, :2] * anchor_boxes[:, :, 2:] + anchor_boxes[:, :, :2],

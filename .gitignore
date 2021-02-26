@@ -2,3 +2,5 @@ data_set/*
 .ipynb_checkpoints/*
 *.ipynb
 *.png
+checkpoints/*
+data/*

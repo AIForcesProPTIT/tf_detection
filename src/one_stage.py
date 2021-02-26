@@ -57,28 +57,28 @@ def build_model(
     necks, config_neck = build_neck(backbone.outputs, neck_config.get("build_node"), True)
 
     head = build_head(  necks,
-                        name_head = head_config.pop("head_name","retina"),
-                        config = head_config )
+                        name_head = head_config.pop("head_name","anchor_based_head"),
+                        **head_config )
 
     
-    model_train =  ModelTrainWraper(inputs = backbone.inputs, outputs = head)
+    model_train =  ModelTrainWraper(anchor_generator=anchor,inputs = backbone.inputs, outputs = head)
 
-    decoder = DecodePredictions(
-        **inference_config,
-        anchors=anchor,
-    )([head[0], head[1]])
+    # decoder = DecodePredictions(
+    #     **inference_config,
+    #     anchors=anchor,
+    # )([head[0], head[1]])
 
 
-    model_inference = keras.Model(inputs =  backbone.inputs, outputs = decoder)
+    
 
-    return model_train, model_inference
+    return model_train
     
 
 class ModelTrainWraper(keras.Model):
     
     def __init__(self, *args, anchor_generator = None,**kwargs):
         super().__init__(*args,**kwargs)
-        self.anchors = anchors
+        self.anchors = anchor_generator
     def train_step(self, data):
         images, matched_gt_boxes, matched_gt_labels,\
         mask_bboxes,mask_labels= data
@@ -90,8 +90,8 @@ class ModelTrainWraper(keras.Model):
             loss = self.loss(
                   y_true, (convs, regs))
 #             print(loss)
-            total_loss = loss[0] * 50. + loss[1] 
-            total_loss = total_loss + self.losses
+            total_loss = loss[0]  + loss[1] 
+            
             trainable_vars = self.trainable_variables
             
             scaled_loss = total_loss

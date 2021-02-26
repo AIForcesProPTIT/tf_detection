@@ -229,8 +229,8 @@ class BoxCoderNumpy(object):
 
         pred_ctr_x = dx * widths[:, None] + ctr_x[:, None]
         pred_ctr_y = dy * heights[:, None] + ctr_y[:, None]
-        pred_w =np.math.exp(dw) * widths[:, None]
-        pred_h =np.math.exp(dh) * heights[:, None]
+        pred_w =np.exp(dw) * widths[:, None]
+        pred_h =np.exp(dh) * heights[:, None]
 
         pred_boxes1 = pred_ctr_x - 0.5 * pred_w
         pred_boxes2 = pred_ctr_y - 0.5 * pred_h

@@ -37,7 +37,7 @@ def _pool2d( inputs, height, width, target_height, target_width, pooling_type='m
                 strides=[height_stride_size, width_stride_size],
                 padding='SAME',name=name,
                 )(inputs)
-        raise ValueError('Unsupported pooling type {}.'.format(self.pooling_type))
+        raise ValueError('Unsupported pooling type {}.'.format(pooling_type))
 
 def build_down_sample(previous_layer, apply_batch_norm = True , **kwargs):
     

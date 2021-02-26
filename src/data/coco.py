@@ -22,7 +22,7 @@ class DataSet():
                  [210, 224, 119], [211, 176, 166], [63, 7, 197], [102, 65, 77], [194, 134, 175],
                  [209, 219, 50], [255, 44, 47], [89, 125, 149], [110, 27, 100]]
     def __init__(self, img_dir=os.getcwd(), tranforms =lambda x: x, anchor_default = np.array([]),
-                assigner = None,two_stage=False ):
+                assigner = None ):
         if assigner is None: assigner = AssignTarget()
         self.assigner = assigner
         self.img_dir = img_dir
@@ -39,7 +39,7 @@ class DataSet():
                                                                    self.tranforms,
                                                                    self.anchor_default,
                                                                    self.assigner,
-                                                                   two_stage),
+                                                                   ),
                                                                    
                                                            output_shapes={
                 'img':(None,None,3),
@@ -63,7 +63,7 @@ class DataSet():
             })
         
     @staticmethod
-    def gen_data(data, img_dir, tranforms, anchor_default,assigner, two_stage):
+    def gen_data(data, img_dir, tranforms, anchor_default,assigner):
 
         for image_info, annotation in zip(data['images'],data['annotations_group_by_image_id']):
             path = os.path.join(img_dir, image_info['file_name']) # tf.string
@@ -89,7 +89,7 @@ class DataSet():
             matched_gt_boxes, matched_gt_labels,mask_bboxes, mask_labels = assigner(anchor_default,
                                                                            data_yield['bboxes'], data_yield['labels'])
 
-            if two_stage:matched_gt_labels = np.where(matched_gt_labels>=0,0,matched_gt_labels)
+            
             data_yield['matched_gt_boxes'] = matched_gt_boxes
             data_yield['matched_gt_labels'] = matched_gt_labels
             data_yield['mask_bboxes']  = mask_bboxes
@@ -129,7 +129,7 @@ class DataSet():
             bboxes= bboxes.numpy()
             img = img.numpy()
             labels = labels.numpy()
-
+        img = img.copy()
         class_names = [ self.annotations['categories'][i]['name'] for  i in labels]
 
         for i,(box, class_name) in enumerate(zip(bboxes,class_names)):

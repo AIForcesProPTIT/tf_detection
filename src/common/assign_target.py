@@ -4,22 +4,51 @@ import tensorflow as tf
 
 from src.common.box_coder import BoxCoder,BoxCoderNumpy
 from src.common.matcher import Matcher, MatcherNumpy
-from src.common.box_utils import iou
+from src.common.box_utils import iou,coordinates_to_center,center_to_coordinates
 
+
+def compute_iou(boxes1_corners, boxes2_corners):
+    """Computes pairwise IOU matrix for given two sets of boxes
+
+    Arguments:
+      boxes1: A tensor with shape `(N, 4)` representing bounding boxes
+        where each box is of the format `[x, y, width, height]`.
+        boxes2: A tensor with shape `(M, 4)` representing bounding boxes
+        where each box is of the format `[x, y, width, height]`.
+
+    Returns:
+      pairwise IOU matrix with shape `(N, M)`, where the value at ith row
+        jth column holds the IOU between ith box and jth box from
+        boxes1 and boxes2 respectively.
+    """
+    boxes1 = coordinates_to_center(boxes1_corners)
+    boxes2 = coordinates_to_center(boxes2_corners)
+    lu = tf.maximum(boxes1_corners[:, None, :2], boxes2_corners[:, :2])
+    rd = tf.minimum(boxes1_corners[:, None, 2:], boxes2_corners[:, 2:])
+    intersection = tf.maximum(0.0, rd - lu)
+    intersection_area = intersection[:, :, 0] * intersection[:, :, 1]
+    boxes1_area = boxes1[:, 2] * boxes1[:, 3]
+    boxes2_area = boxes2[:, 2] * boxes2[:, 3]
+    union_area = tf.maximum(
+        boxes1_area[:, None] + boxes2_area - intersection_area, 1e-8
+    )
+    return tf.clip_by_value(intersection_area / union_area, 0.0, 1.0)
 
 class AssignTarget(object):
     def __init__(self , box_coder = BoxCoderNumpy(weights=[10.,10.,5.,5.]),matcher =None, **kwargs):
         self.box_coder = box_coder
         if matcher is None:
-            matcher = MatcherNumpy(high_threshold=0.6, low_threshold=0.4, allow_low_quality_matches=False)
+            matcher = MatcherNumpy(high_threshold=0.5, low_threshold=0.4, allow_low_quality_matches=False)
         self.matcher = matcher
         self.__dict__.update(**kwargs)
     
     def __call__(self, anchors, bboxes, labels):
         anchors = tf.convert_to_tensor(anchors, dtype= tf.float32)
         bboxes = tf.convert_to_tensor(bboxes, dtype= tf.float32)
-        matrix_iou = iou(bboxes, anchors) 
+        matrix_iou = compute_iou(bboxes, anchors) 
         matrix_iou = matrix_iou.numpy()
+        
+
         matched_idx =  self.matcher(matrix_iou) # N
         fake_bboxes = np.concatenate([np.array([-1.,-1.,-1.,-1.]).reshape(-1,4), np.array([-1., -1., -1., -1.]).reshape(-1,4), bboxes], axis=0)
         fake_labels = np.concatenate([np.array([-2]), np.array([-1]), labels], axis=0)
@@ -27,8 +56,8 @@ class AssignTarget(object):
         matched_gt_labels = fake_labels[matched_idx + 2]
         target_regression = self.box_coder.encode_single(matched_gt_boxes, anchors)
 
-        mask_bboxes = np.where(matched_idx >=0 , 1.0, 0.)
-        mask_labels = np.where( matched_idx >= -1, 1., 0.)
+        mask_bboxes = np.where(matched_idx >= 0 , 1.0, 0.)
+        mask_labels = np.where( matched_idx >= -1 , 1., 0.)
         return target_regression, matched_gt_labels,mask_bboxes, mask_labels
 
 class AssignTargetTF(object):
@@ -36,7 +65,7 @@ class AssignTargetTF(object):
         if box_coder is None:
             box_coder = BoxCoder(weights=[10.,10.,5.,5.])
         if matcher is None:
-            matcher = Matcher(0.6, 0.4,allow_low_quality_matches=False)
+            matcher = Matcher(0.5, 0.4,allow_low_quality_matches=False)
         self.box_coder = box_coder
         self.matcher = matcher
         self.__dict__.update(**kwargs)
