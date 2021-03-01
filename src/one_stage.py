@@ -79,6 +79,7 @@ class ModelTrainWraper(keras.Model):
     def __init__(self, *args, anchor_generator = None,**kwargs):
         super().__init__(*args,**kwargs)
         self.anchors = anchor_generator
+        self.ap = 50.
     def train_step(self, data):
         images, matched_gt_boxes, matched_gt_labels,\
         mask_bboxes,mask_labels= data
@@ -90,7 +91,7 @@ class ModelTrainWraper(keras.Model):
             loss = self.loss(
                   y_true, (convs, regs))
 #             print(loss)
-            total_loss = loss[0]  + loss[1] 
+            total_loss = loss[0] * self.ap + loss[1] 
             
             trainable_vars = self.trainable_variables
             
